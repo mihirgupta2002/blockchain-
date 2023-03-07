@@ -1,0 +1,89 @@
+//SPDX-License-Identifier: GPL-3.0
+
+pragma solidity >=0.5.0 <= 0.9.0;
+
+contract votingSystem{
+
+
+
+  struct vote{
+     
+     address voterAddress;
+     bool choice;
+  }
+ 
+
+ struct voter{
+     string votername;
+     bool voted;
+ }
+ enum State{Created,Voting,ended}
+ State public state;
+ uint public noofvoters=0;
+ address public ballotOfficial;
+ string public ballotOfficialName;
+ uint private noofvoted=0;
+ uint public totalvote=0;
+ uint public finalresult=0;
+ string public proposal;
+
+ mapping (address=> voter) private voterRegister;
+ mapping (uint =>vote)private votes;
+
+ modifier  condition(bool _condition){
+     require(_condition);
+     _;
+ }
+ modifier Instate(State _state){
+     require(state == _state);
+     _;
+ }
+ modifier onlyOfficial(){
+     require(msg.sender==ballotOfficial);
+     _;
+ }
+
+ constructor(string memory _ballotOfficialName, string memory _proposal){
+     ballotOfficial = msg.sender;
+     ballotOfficialName = _ballotOfficialName;
+     proposal= _proposal;
+     state = State.Created;
+ }
+
+ function addVoter(address _voterAddress,string memory _votername) public Instate(State.Created) onlyOfficial{
+     voter memory v;
+     v.votername = _votername;
+     v.voted= false;
+     voterRegister[_voterAddress]= v;
+     noofvoters++;
+ }
+ function startvote() public onlyOfficial Instate(State.Created){
+     state= State.Voting;
+  }
+ function doVote(bool _choice) public Instate(State.Voting) returns(bool voted)
+ {
+    bool found= false;
+     if (bytes(voterRegister[msg.sender].votername).length != 0 && !voterRegister[msg.sender].voted ){
+         voterRegister[msg.sender].voted= true;
+           vote memory v;
+           v.voterAddress= msg.sender;
+           if(_choice){
+             noofvoted++;
+             }
+          votes[totalvote]=v;
+          totalvote++;
+          found= true;
+    return found;
+     }
+ }
+
+        
+    
+ function end()public onlyOfficial Instate(State.ended){
+     finalresult= noofvoted;
+     state= State.ended;
+ }
+
+ 
+    
+}
