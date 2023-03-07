@@ -1,0 +1,144 @@
+//SPDX-License-Identifier: GPL-3.0
+
+pragma solidity >=0.5.0 <0.9.0;
+
+contract crowdfunding{
+
+    address public admin;
+    struct contributor{
+        
+        bool choice;
+        uint contribution;
+    }
+    uint public goal;
+    uint public min_contribution;
+    uint   public no_of_contributors=0;
+    uint public deadline;
+    uint total_amount;
+    uint no_of_voters =0;
+
+    struct Request{
+        address payable recipient;
+        mapping (address=>bool) voters;
+        string details;
+        uint total_voters;
+        uint value;
+        bool completed;
+    }
+    uint public numrequests;
+    mapping(uint=>Request) public requests;
+
+    modifier onlyAdmin(){
+        require(msg.sender==admin);
+    _;
+    }
+   
+  
+    modifier running()
+    {
+        require (deadline>block.timestamp);
+        _;
+    }
+    modifier basic_req()
+    {
+        require((registered_contributor[msg.sender].contribution>=min_contribution));
+        _;
+    }
+    
+
+    constructor(uint _min_contribution,uint _goal,uint _deadline){
+        admin=msg.sender;
+        min_contribution=_min_contribution;
+        goal=_goal;
+        deadline= block.timestamp + _deadline;
+
+
+    }
+    mapping(address=>contributor) public registered_contributor;
+
+
+    function contribute()public payable running
+        {
+            require(msg.value>=min_contribution);
+            if((registered_contributor[msg.sender]).contribution==0)
+            {
+                no_of_contributors++;
+
+
+            }
+            (registered_contributor[msg.sender]).contribution+=msg.value;
+            total_amount += msg.value;
+        }
+    receive() payable external{
+        contribute();
+    }
+
+    function balance()public view returns(uint)
+    {
+        return address(this).balance;
+    }
+        
+
+
+
+    
+
+
+    function spending_request(uint _value, string memory _details, address payable _recipient)public  onlyAdmin{
+
+        Request storage newRequest= requests[numrequests];
+        numrequests++;
+        newRequest.value=_value;
+        newRequest.details=_details;
+        newRequest.completed=false;
+        newRequest.total_voters=0;
+        newRequest.recipient=_recipient;
+    }
+
+
+    function vote_for_request(uint _numRequests)public basic_req (){
+        Request storage currentrequest= requests[_numRequests];
+        require(currentrequest.voters[msg.sender]==false,'ALREADU VOTED');
+        
+
+        
+
+        currentrequest.voters[msg.sender]=true;
+        currentrequest.total_voters++;
+
+        
+    }
+
+    function makepayment(uint requestnum)public onlyAdmin{
+        Request storage currentrequest= requests[requestnum];
+        require(total_amount>=goal,"amount not more than goal");
+        require(currentrequest.completed==false);
+        require(currentrequest.total_voters>=(no_of_contributors/2));
+        
+        currentrequest.recipient.transfer(currentrequest.value);
+        currentrequest.completed=true;
+
+
+
+    }
+   
+
+  
+
+
+
+ function refund()public basic_req {
+        require(block.timestamp>deadline && total_amount<goal);
+        address payable recipient =payable(msg.sender);
+        uint value= ((registered_contributor[msg.sender]).contribution);
+        (registered_contributor[msg.sender]).contribution=0;
+
+
+        recipient.transfer(value);
+
+
+    }
+    
+
+}
+
